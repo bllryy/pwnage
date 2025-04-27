@@ -1,24 +1,41 @@
-FROM debian:bullseye-slim
+# Previous Debian-based image
+# FROM debian:bullseye-slim
+
+FROM alpine:latest
 
 # Install dependencies
-RUN apt-get update && apt-get install -y \
-    nsjail \
-    socat \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apk update && \
+    apk add --no-cache \
+    build-base \
+    libnl3-dev \
+    protobuf-dev \
+    libseccomp-dev \
+    libtool \
+    pkgconfig \
+    protobuf \
+    go \
+    bash \
+    socat
 
-# Create the restricted user
-RUN useradd -m -u 31337 ctf
+# Create jail user and directory structure
+RUN adduser -D -u 1000 jail && \
+    mkdir -p /srv /jail/cgroup/cpu /jail/cgroup/mem /jail/cgroup/pids /jail/cgroup/unified
 
-# Set up challenge directory
-RUN mkdir -p /srv/app && chown root:ctf /srv/app && chmod 750 /srv/app
+# Set up challenge directory structure
+RUN mkdir -p /srv/app
 
-# Copy in entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy challenge files
+COPY challenge /srv/app/challenge
+COPY run.sh /srv/app/run
+RUN chmod +x /srv/app/run /srv/app/challenge
 
-# Run as ctf user inside /srv/app
-USER ctf
-WORKDIR /srv/app
+# Default resource limits
+ENV JAIL_TIME_LIMIT=60
+ENV JAIL_MEM_LIMIT=50
+ENV JAIL_PROC_LIMIT=10
+ENV JAIL_CPU_LIMIT=100
+ENV POW_DIFFICULTY=0
 
-EXPOSE 1337
-ENTRYPOINT ["/entrypoint.sh"]
+# Run the Jail
+CMD ["/jail/run"]
+
