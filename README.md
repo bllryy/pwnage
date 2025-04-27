@@ -17,26 +17,28 @@ RUN chmod 755 /srv/app/run
 ```
 ### Whats running inside?
 
-- Debian Bullseye slim base
+- Ubuntu Latest
 - nsjail for sandboxing
 - socat for TCP listener
 - Non-root ctf user (UID 31337)
-- Automatic jail per connection (via entrypoint.sh)
-- /srv/app is the only writable, accessible zone
+- Automatic jail creation for each connection
+- Minimal writable filesystem (/srv/app only)
 
 
 ## Things to know before you pwn.
- - Your binary MUST be in /srv/app/run and executable.
+- Your binary MUST be placed at /srv/app/run and be executable
+- The container listens on port 1337 by default (configurable via PORT environment variable)
+- Every connection spawns a new nsjail instance for isolation
+- Custom nsjail settings can be provided by modifying the configuration and entrypoint.sh
+- The environment is deliberately restrictive - your binary should be self-contained
+- The challenge runs as a non-root user for added security
 
-- The container will listen on port 1337 as default.
+## Advanced Usage
+### Custom Port
+``` docker run -p 9999:1337 -e PORT=1337 my-challenge ```
 
- - Every connection gets a new nsjail instance.
-
- - If you want to customize nsjail settings, consider baking in your own config file and updating entrypoint.sh accordingly.
-
- - No internet access, no /proc, no root — your binary should be self-contained.
-
- - Runs as a non-root user inside the container for added safety.
+### Custom Resource Limits
+``` docker run -e TIME_LIMIT=30 -e MEM_LIMIT=64 -e PROC_LIMIT=10 my-challenge ```
 
 ## File Structure.
 
@@ -46,3 +48,5 @@ RUN chmod 755 /srv/app/run
     ├── run        # your challenge binary
     └── flag.txt   # optional, read-only inside the jail
 ```
+
+# Please Contribute and Change things!
