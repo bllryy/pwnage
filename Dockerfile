@@ -1,39 +1,27 @@
-FROM ubuntu:22.04
+FROM alpine
 
-# Avoid prompts from apt
-ENV DEBIAN_FRONTEND=noninteractive
+# Dependencies
+RUN apk add --no-cache musl-dev
+RUN apk add --no-cache gcc
+RUN apk add --no-cache make
+RUN apk add --no-cache socat
 
-# Install dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
-    socat \
-    gcc \
-    gdb \
-    python3 \
-    python3-pip \
-    netcat \
-    vim \
-    curl \
-    wget
-
-# Create non-root user for running challenges
-RUN useradd -m ctf && \
-    mkdir -p /home/ctf/challenge
-
-# Copy challenge files
-COPY buffer_overflow.c /home/ctf/challenge/
-WORKDIR /home/ctf/challenge
+# Copy source and resources
+COPY src/res /pwnage
+COPY src /pwnage-src
+WORKDIR /pwnage-src
 
 # Compile the challenge binary with security features disabled
-RUN gcc -o buffer_overflow buffer_overflow.c -fno-stack-protector -z execstack -no-pie
+RUN make
 
-# Set permissions
-RUN chmod +x /home/ctf/challenge/buffer_overflow && \
-    chown -R ctf:ctf /home/ctf
+RUN cp /pwnage-src/run /pwnage
+WORKDIR /pwnage
+
+RUN chmod -R 550 /pwnage
+RUN chmod -R 000 /pwnage-src
 
 # Expose port
 EXPOSE 9999
 
 # Start a server that runs the challenge
-CMD ["socat", "TCP-LISTEN:9999,reuseaddr,fork", "EXEC:/home/ctf/challenge/buffer_overflow"]
+CMD ["socat", "TCP-LISTEN:9999,reuseaddr,fork", "EXEC:/pwnage/run"]
